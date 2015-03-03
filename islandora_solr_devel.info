@@ -1,0 +1,6 @@
+name = Islandora Solr Devel
+description = Devel stuff for Islandora Solr
+core = 7.x
+version = 7.x-dev
+dependencies[] = islandora_solr
+package = Islandora Search
