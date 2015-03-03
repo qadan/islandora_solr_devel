@@ -6,5 +6,100 @@
  */
 
 /**
- * CODE GOES HERE LOL
+ * Implements hook_menu().
  */
+function islandora_solr_devel_menu() {
+  $items = array();
+  $items['islandora/object/%islandora_object/manage/solr_fields'] = array(
+    'title' => 'Solr Fields',
+    'type' => MENU_LOCAL_TASK,
+    'page callback' => 'islandora_solr_devel_fields_display',
+    'page arguments' => array(2),
+    'access callback' => 'islandora_solr_devel_fields_display_access',
+  );
+  return $items;
+}
+
+function islandora_solr_devel_fields_display_access() {
+  return user_access('administer islandora solr');
+}
+
+function islandora_solr_devel_theme() {
+  return array(
+    'islandora_solr_devel_fields_display' => array(
+      'template' => 'theme/islandora-solr-devel-fields-display',
+      'variables' => array('solr_doc' => NULL, 'label' => NULL),
+    ),
+  );
+}
+
+function islandora_solr_devel_fields_display($object) {
+  module_load_include('inc', 'islandora', 'includes/breadcrumb');
+  drupal_set_breadcrumb(islandora_get_breadcrumbs($object));
+
+  $processor = new IslandoraSolrQueryProcessor();
+  $processor->internalSolrParams['type'] = 'dismax';
+  $processor->buildQuery('PID:"' . $object->id . '"');
+  $processor->executeQuery(FALSE);
+  $solr_doc = isset($processor->islandoraSolrResult['response']['objects'][0]) ? $processor->islandoraSolrResult['response']['objects'][0]['solr_doc'] : FALSE;
+  $output = theme('islandora_solr_devel_fields_display', array('solr_doc' => $solr_doc, 'label' => $object->label));
+  return $output;
+}
+
+function template_preprocess_islandora_solr_devel_fields_display(array &$variables) {
+  $categories = array(
+    'tabset' => array(),
+  );
+  if (!$variables['solr_doc']) {
+    $variables['solr_doc']['empty'] = array(
+      '#type' => 'markup',
+      '#markup' => t('No Solr document found for this object.'),
+    );
+  }
+  else {
+    foreach ($variables['solr_doc'] as $field => $value) {
+      $underscore_category = explode('_', $field);
+      $dot_category = explode('.', $field);
+      // Determine the category.
+      if (count($underscore_category) > 1) {
+        // @TODO: determine name from more pieces if they're all the same.
+        $category = "$underscore_category[0]_";
+      }
+      elseif (count($dot_category) > 1) {
+        $category = "$dot_category[0].";
+      }
+      else {
+        $category = 'Other';
+      }
+
+      if (!isset($categories['tabset'][$category])) {
+        $categories['tabset'][$category] = array(
+          '#type' => 'fieldset',
+          '#title' => t('@category', array('@category' => $category)),
+          'table' => array(
+            'header' => array('Field', 'Value'),
+            'rows' => array(),
+          ),
+        );
+      }
+      if (is_array($value)) {
+        $value = $value[0];
+      }
+      $categories['tabset'][$category]['table']['rows'][] = array(
+        $field,
+        $value,
+      );
+    }
+    foreach ($categories['tabset'] as &$category) {
+      $table = $category['table'];
+      $category['table'] = array(
+        '#markup' => theme('table', $table),
+      );
+    }
+    $categories['#type'] = 'vertical_tabs';
+  }
+  $variables['solr_doc'] = $categories;
+}
+
+function islandora_solr_devel_determine_field_category() {
+}
