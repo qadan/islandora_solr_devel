@@ -57,6 +57,7 @@ function template_preprocess_islandora_solr_devel_fields_display(array &$variabl
     );
   }
   else {
+    ksort($variables['solr_doc']);
     foreach ($variables['solr_doc'] as $field => $value) {
       $underscore_category = explode('_', $field);
       $dot_category = explode('.', $field);
